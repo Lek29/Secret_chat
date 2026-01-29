@@ -1,17 +1,44 @@
 import asyncio
 import aiofiles
+import configargparse
 
 from datetime import datetime
 
+def get_args():
+    parser = configargparse.ArgParser(default_config_files=['.env'])
+
+    parser.add_argument(
+        '--host',
+        type=str,
+        default='minechat.dvmn.org',
+        help='Адрес сервера чата',
+        env_var='MINECHAT_HOST'
+    )
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=5000,
+        help='Порт сервера чата',
+        env_var='MINICHAT_PORT'
+    )
+    parser.add_argument(
+        '--history',
+        type=str,
+        default='chat_logfile.txt',
+        help='Путь к файлу логов ',
+        env_var='MINECHAT_HISTORY'
+    )
+    return parser.parse_args()
 
 async def main():
-    host = 'minechat.dvmn.org'
-    port = 5000
-    logfile = 'chat_logfile.txt'
+    args = get_args()
+    host = args.host
+    port = args.port
+    logfile = args.history
 
-    writer = None
 
     while True:
+        writer = None
         try:
             reader, writer = await asyncio.open_connection(host, port)
 
