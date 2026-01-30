@@ -5,8 +5,10 @@ import configargparse
 from datetime import datetime
 
 def get_args():
-    parser = configargparse.ArgParser(default_config_files=['.env'])
-
+    parser = configargparse.ArgParser(
+        default_config_files=['.env'],
+        ignore_unknown_config_file_keys=True
+    )
     parser.add_argument(
         '--host',
         type=str,
@@ -28,7 +30,9 @@ def get_args():
         help='Путь к файлу логов ',
         env_var='MINECHAT_HISTORY'
     )
+
     return parser.parse_args()
+
 
 async def main():
     args = get_args()
