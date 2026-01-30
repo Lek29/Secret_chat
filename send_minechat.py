@@ -8,7 +8,8 @@ load_dotenv()
 
 logging.basicConfig(
     level=logging.DEBUG,
-    format='{levelname} - {name} - {message}'
+    format='{levelname} - {name} - {message}',
+    style='{'
 )
 logger = logging.getLogger(__file__)
 
@@ -19,6 +20,7 @@ def parse_args():
     parser.add_argument('--token', env_var='ACCOUNT_HASH', help='Твой хэш аккаунта')
     parser.add_argument('--message',  help='Текст сообщения')
     return parser.parse_args()
+
 
 async def submit_message(host, port, token, message):
     logger.debug(f"Connecting to {host}:{port}")
@@ -31,7 +33,12 @@ async def submit_message(host, port, token, message):
         await writer.drain()
 
         auth_response = await reader.readline()
-        logger.debug(f'Ответ сервера: {auth_response.decode().strip()}')
+        decoded_auth = auth_response.decode().strip()
+        logger.debug(f'Ответ сервера: {decoded_auth}')
+
+        if decoded_auth == 'null':
+            logger.error("Ошибка авторизации! Проверьте ACCOUNT_HASH в .env")
+            return
 
         prepared_message = message.replace('\n', ' ')
         writer.write(f'{prepared_message}\n\n'.encode())
@@ -45,7 +52,7 @@ async def submit_message(host, port, token, message):
 
 async def main():
     args = parse_args()
-    logger.debug(f"Использован токен: {args.token}")
+    logger.debug(f"Использован токен: {args.token[6:]}")
     if args.token is None:
         logger.error("ОШИБКА: Токен не найден! Проверьте файл .env или передайте через --token")
         return
