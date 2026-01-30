@@ -1,11 +1,16 @@
 import asyncio
-import os
+import logging
 import configargparse
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='{levelname} - {name} - {message}'
+)
+logger = logging.getLogger(__file__)
 
 def parse_args():
     parser = configargparse.ArgParser()
@@ -16,6 +21,7 @@ def parse_args():
     return parser.parse_args()
 
 async def submit_message(host, port, token, message):
+    logger.debug(f"Connecting to {host}:{port}")
     reader, writer = await asyncio.open_connection(host, port)
 
     try:
@@ -25,12 +31,12 @@ async def submit_message(host, port, token, message):
         await writer.drain()
 
         auth_response = await reader.readline()
-        print(f'Ответ сервера: {auth_response.decode().strip()}')
+        logger.debug(f'Ответ сервера: {auth_response.decode().strip()}')
 
         prepared_message = message.replace('\n', ' ')
         writer.write(f'{prepared_message}\n\n'.encode())
         await writer.drain()
-        print("Сообщение отправлено!")
+        logger.info("Сообщение отправлено!")
 
     finally:
         writer.close()
@@ -39,9 +45,9 @@ async def submit_message(host, port, token, message):
 
 async def main():
     args = parse_args()
-    print(f"DEBUG: Использован токен: {args.token}")
+    logger.debug(f"Использован токен: {args.token}")
     if args.token is None:
-        print("ОШИБКА: Токен не найден! Проверьте файл .env или передайте через --token")
+        logger.error("ОШИБКА: Токен не найден! Проверьте файл .env или передайте через --token")
         return
 
     await submit_message(args.host, args.port, args.token, args.message)
