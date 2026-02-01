@@ -4,6 +4,7 @@ import configargparse
 
 from datetime import datetime
 
+
 def get_args():
     parser = configargparse.ArgParser(
         default_config_files=['.env'],
