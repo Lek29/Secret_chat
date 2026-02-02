@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from registration import register
 from tools import sanitize_text, save_token_to_env
 
-load_dotenv()
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -57,6 +56,8 @@ async def authorise(reader, writer, token):
 
 
 async def main():
+    load_dotenv()
+
     args = parse_args()
 
     token = args.token
