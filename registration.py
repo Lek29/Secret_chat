@@ -2,6 +2,7 @@ import json
 import asyncio
 import logging
 
+from tools import sanitize_text
 
 logger = logging.getLogger(__file__)
 
@@ -9,13 +10,13 @@ async def register(host, port, nickname):
     reader, writer = await asyncio.open_connection(host, port)
     try:
         await reader.readline()
-
         writer.write('\n'.encode())
         await writer.drain()
 
         await reader.readline()
 
-        writer.write(f'{nickname}\n'.encode())
+        safe_nickname = sanitize_text(nickname)
+        writer.write(f'{safe_nickname}\n'.encode())
         await writer.drain()
 
         response = await reader.readline()
@@ -25,9 +26,3 @@ async def register(host, port, nickname):
     finally:
         writer.close()
         await writer.wait_closed()
-
-
-def save_token_to_env(token):
-    with open('.env', 'a', encoding='utf-8') as f:
-        f.write(f'\nACCOUNT_HASH={token}\n')
-    logger.info(f"Токен сохранен в файл .env")

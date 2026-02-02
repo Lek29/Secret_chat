@@ -4,7 +4,8 @@ import configargparse
 import json
 
 from dotenv import load_dotenv
-from registration import register, save_token_to_env
+from registration import register
+from tools import sanitize_text, save_token_to_env
 
 load_dotenv()
 
@@ -15,11 +16,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__file__)
 
-
-def sanitize_text(text):
-    if not text:
-        return ''
-    return text.replace('\n', '').strip()
 
 async def submit_message(writer, message):
     cleaned_message = sanitize_text(message)
