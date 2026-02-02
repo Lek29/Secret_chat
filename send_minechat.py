@@ -9,11 +9,6 @@ from registration import register
 from tools import sanitize_text, save_token_to_env
 
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='{levelname} - {name} - {message}',
-    style='{'
-)
 logger = logging.getLogger(__file__)
 
 
@@ -56,6 +51,12 @@ async def authorise(reader, writer, token):
 
 
 async def main():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='{levelname} - {name} - {message}',
+        style='{'
+    )
+
     load_dotenv()
 
     args = parse_args()
