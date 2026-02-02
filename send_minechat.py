@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 from registration import register
 from tools import sanitize_text, save_token_to_env
 
-
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 
 async def submit_message(writer, message):
@@ -50,26 +49,15 @@ async def authorise(reader, writer, token):
     return decode_response
 
 
-async def main():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='{levelname} - {name} - {message}',
-        style='{'
-    )
-
-    load_dotenv()
-
-    args = parse_args()
-
+async def handle_connection(args):
     token = args.token
-
     reader, writer = await asyncio.open_connection(args.host, args.port)
 
     try:
         if not token:
             logger.info('Токен не найден. Переходим в режим регистрации.')
 
-            nickname = args.nicname or input('Введите ваш никнейм для регистрации: ').strip()
+            nickname = args.nickname or input('Введите никнейм для регистрации: ').strip()
 
             if not nickname:
                 logger.error('Имя не может быть пустым.')
@@ -78,10 +66,10 @@ async def main():
             new_account = await register(reader, writer, nickname)
             token = new_account['account_hash']
             save_token_to_env(token)
-            logger.info('Регистрация завершена! Ваш хэш сохранен. Теперь вы можете отправлять сообщения.')
+            logger.info('Регистрация завершена! Хэш сохранен в .env.')
 
             if not args.message:
-                print('Аккаунт создан. Чтобы отправить сообщение, запустите скрипт с флагом --message')
+                print('Для отправки сообщения используйте флаг --message')
                 return
 
         if not args.message:
@@ -98,5 +86,22 @@ async def main():
         await writer.wait_closed()
 
 
+async def main():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='{levelname} - {name} - {message}',
+        style='{'
+    )
+
+    load_dotenv()
+
+    args = parse_args()
+
+    await handle_connection(args)
+
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

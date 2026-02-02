@@ -1,8 +1,51 @@
 import asyncio
+import logging
 from datetime import datetime
 
 import aiofiles
 import configargparse
+from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
+
+
+async def watch_chat(host, port, logfile):
+
+    while True:
+        writer = None
+        try:
+            reader, writer = await asyncio.open_connection(host, port)
+
+            timestamp = datetime.now().strftime('%d.%m.%y %H:%M')
+            msg = f'[{timestamp}] Установлено соединение\n'
+            logger.info(msg.strip())
+
+            async with aiofiles.open(logfile, mode='a', encoding='utf-8') as f:
+                await f.write(msg)
+                await f.flush()
+
+            while True:
+                encoded_message = await reader.readline()
+                if not encoded_message:
+                    break
+
+                decoded_message = encoded_message.decode().strip()
+                timestamp = datetime.now().strftime('%d.%m.%y %H:%M')
+                formatted_log = f'[{timestamp}] {decoded_message}\n'
+
+                async with aiofiles.open(logfile, mode='a', encoding='utf-8') as f:
+                    await f.write(formatted_log)
+                    await f.flush()
+
+                logger.info(formatted_log.strip())
+
+        except (ConnectionError, asyncio.TimeoutError, OSError):
+            logger.error('Ошибка соединения. Повторная попытка через 5 секунд...')
+            await asyncio.sleep(5)
+        finally:
+            if writer:
+                writer.close()
+                await writer.wait_closed()
 
 
 def get_args():
@@ -36,50 +79,20 @@ def get_args():
 
 
 async def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='{levelname} - {name} - {message}',
+        style='{'
+    )
+
+    load_dotenv()
     args = get_args()
-    host = args.host
-    port = args.port
-    logfile = args.history
 
-    while True:
-        writer = None
-        try:
-            reader, writer = await asyncio.open_connection(host, port)
+    await watch_chat(args.host, args.port, args.history)
 
-            async with aiofiles.open(logfile, mode='a', encoding='utf-8') as f:
-                timestamp = datetime.now().strftime('%d.%m.%y %H:%M')
-                start_msg = f"[{timestamp}] Установлено соединение\n"
-
-                print(start_msg)
-
-                await f.write(start_msg)
-                await f.flush()
-
-            while True:
-                encoded_message = await reader.readline()
-
-                if not encoded_message:
-                    break
-
-                decoded_message = encoded_message.decode().strip()
-                timestamp = datetime.now().strftime('%d.%m.%y %H:%M')
-                formatted_log = f"[{timestamp}] {decoded_message}\n"
-
-                async with aiofiles.open(logfile, mode='a', encoding='utf-8') as f:
-                    await f.write(formatted_log)
-                    await f.flush()
-
-                print(formatted_log.strip())
-
-        except (ConnectionError, asyncio.TimeoutError, OSError):
-            await asyncio.sleep(5)
-        finally:
-            if writer:
-                writer.close()
-                await writer.wait_closed()
 
 if __name__ == '__main__':
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nСкрипт остановлен пользователем.")
+        logger.info('\nСкрипт остановлен пользователем.')
