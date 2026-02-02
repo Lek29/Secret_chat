@@ -21,6 +21,15 @@ def sanitize_text(text):
         return ''
     return text.replace('\n', '').strip()
 
+async def submit_message(writer, message):
+    cleaned_message = sanitize_text(message)
+
+    if not cleaned_message:
+        return
+
+    writer.write(f'{cleaned_message}\n\n'.encode())
+
+    await writer.drain()
 
 def parse_args():
     parser = configargparse.ArgParser()
@@ -80,9 +89,7 @@ async def main():
 
         account_info = await authorise(reader, writer, token)
         if account_info:
-            message = sanitize_text(args.message)
-            writer.write(f'{message}\n\n'.encode())
-            await writer.drain()
+            await submit_message(writer, args.message)
             logger.info("Сообщение успешно отправлено!")
 
     finally:
