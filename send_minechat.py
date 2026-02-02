@@ -1,9 +1,10 @@
 import asyncio
-import logging
-import configargparse
 import json
+import logging
 
+import configargparse
 from dotenv import load_dotenv
+
 from registration import register
 from tools import sanitize_text, save_token_to_env
 
@@ -27,6 +28,7 @@ async def submit_message(writer, message):
 
     await writer.drain()
 
+
 def parse_args():
     parser = configargparse.ArgParser()
     parser.add_argument('--host', default='minechat.dvmn.org', env_var='MINECHAT_HOST')
@@ -46,7 +48,7 @@ async def authorise(reader, writer, token):
     decode_response = json.loads(response.decode())
 
     if decode_response is None:
-        logger.error("Неизвестный токен. Проверьте его или зарегистрируйтесь заново.")
+        logger.error('Неизвестный токен. Проверьте его или зарегистрируйтесь заново.')
         return None
 
     logger.debug(f"Выполнена авторизация под ником: {decode_response['nickname']}")
@@ -63,22 +65,21 @@ async def main():
 
     try:
         if not token:
-            logger.info("Токен не найден. Переходим в режим регистрации.")
+            logger.info('Токен не найден. Переходим в режим регистрации.')
 
-            nickname = args.nicname or input("Введите ваш никнейм для регистрации: ").strip()
+            nickname = args.nicname or input('Введите ваш никнейм для регистрации: ').strip()
 
             if not nickname:
-                logger.error("Имя не может быть пустым.")
+                logger.error('Имя не может быть пустым.')
                 return
 
             new_account = await register(reader, writer, nickname)
             token = new_account['account_hash']
             save_token_to_env(token)
-            logger.info(f"Регистрация завершена! Ваш хэш сохранен. Теперь вы можете отправлять сообщения.")
-
+            logger.info('Регистрация завершена! Ваш хэш сохранен. Теперь вы можете отправлять сообщения.')
 
             if not args.message:
-                print("Аккаунт создан. Чтобы отправить сообщение, запустите скрипт с флагом --message")
+                print('Аккаунт создан. Чтобы отправить сообщение, запустите скрипт с флагом --message')
                 return
 
         if not args.message:
@@ -88,12 +89,11 @@ async def main():
         account_info = await authorise(reader, writer, token)
         if account_info:
             await submit_message(writer, args.message)
-            logger.info("Сообщение успешно отправлено!")
+            logger.info('Сообщение успешно отправлено!')
 
     finally:
         writer.close()
         await writer.wait_closed()
-
 
 
 if __name__ == '__main__':

@@ -1,10 +1,11 @@
-import json
 import asyncio
+import json
 import logging
 
 from tools import sanitize_text
 
 logger = logging.getLogger(__file__)
+
 
 async def register(host, port, nickname):
     reader, writer = await asyncio.open_connection(host, port)

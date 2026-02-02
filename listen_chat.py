@@ -1,8 +1,8 @@
 import asyncio
+from datetime import datetime
+
 import aiofiles
 import configargparse
-
-from datetime import datetime
 
 
 def get_args():
@@ -40,7 +40,6 @@ async def main():
     host = args.host
     port = args.port
     logfile = args.history
-
 
     while True:
         writer = None
