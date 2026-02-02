@@ -65,7 +65,7 @@ def get_args():
         type=int,
         default=5000,
         help='Порт сервера чата',
-        env_var='MINICHAT_PORT'
+        env_var='MINECHAT_PORT'
     )
     parser.add_argument(
         '--history',
