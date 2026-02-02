@@ -12,4 +12,4 @@ __pycache__/
 .idea/
 
 /.flake8
-*.txt
+chat_logfile.txt
