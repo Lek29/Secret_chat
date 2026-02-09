@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument('--port', default=5050, type=int, env_var='MINECHAT_WRITE_PORT')
     parser.add_argument('--token', env_var='ACCOUNT_HASH', help='Твой хэш аккаунта')
     parser.add_argument('--nickname', help='Имя пользователя для регистрации')
+    parser.add_argument('--history', default='chat_history.txt', help='Путь к файлу истории чата')
     parser.add_argument('--message', help='Текст сообщения')
     return parser.parse_args()
 

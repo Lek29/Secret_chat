@@ -13,3 +13,4 @@ __pycache__/
 
 /.flake8
 chat_logfile.txt
+*.txt
