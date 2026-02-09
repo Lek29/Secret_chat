@@ -167,16 +167,6 @@ async def read_msgs(host, port, gui_queue,save_queue, status_updates_queue, watc
             await writer.wait_closed()
 
 
-async def generate_msg(queue):
-    while True:
-        current_timestamp = int(time())
-
-        message = f'Ping {current_timestamp}'
-        queue.put_nowait(message)
-
-        await asyncio.sleep(1)
-
-
 async  def main():
     load_dotenv()
 
