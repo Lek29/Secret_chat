@@ -139,87 +139,32 @@ async def load_history(filepath, messages_queue):
 
 
 async def read_msgs(host, port, gui_queue,save_queue, status_updates_queue, watchdog_queue):
-    while True:
-        status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.INITIATED)
-
-        watchdog_queue.put_nowait("Prompt before auth")
-
-        writer = None
-
-        try:
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(host, port),
-                timeout=5.0
-            )
-
-            status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
-
-            while True:
-                line = await asyncio.wait_for(reader.readline(), timeout=10.0)
-
-                if not line:
-                    break
-
-                watchdog_queue.put_nowait("New message in chat")
-
-                message = line.decode().strip()
-
-                gui_queue.put_nowait(message)
-                save_queue.put_nowait(message)
-
-        except (ConnectionError, asyncio.TimeoutError, socket.gaierror, OSError) as e:
-            logger.error(f'Потеря соединения: {e}')
-        finally:
-            status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.CLOSED)
-
-            if writer:
-                writer.close()
-                try:
-                    await writer.wait_closed()
-                except OSError:
-                    pass
-
-            await asyncio.sleep(3)
-
-
-async def watch_chat(args, messages_queue, status_updates_queue):
-    host = args.host
-    port = args.port
-
     status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.INITIATED)
-    writer = None
+    watchdog_queue.put_nowait("Prompt before auth")
 
-    try:
+    async with timeout(5.0):
         reader, writer = await asyncio.open_connection(host, port)
 
+    try:
         status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
 
-        welcome_msg = await reader.readline()
-        messages_queue.put_nowait(welcome_msg.decode().strip())
-
-        if args.token:
-            writer.write(f"{args.token}\n".encode())
-            await writer.drain()
-
-            auth_answer = await reader.readline()
-            decoded_answer = auth_answer.decode().strip()
-            messages_queue.put_nowait(decoded_answer)
-
-            status_updates_queue.put_nowait(gui.NicknameReceived('Авторизован'))
-
         while True:
-            line = await reader.readline()
+            # Здесь тоже используем timeout вместо wait_for
+            async with timeout(10.0):
+                line = await reader.readline()
+
             if not line:
                 break
-            messages_queue.put_nowait(line.decode().strip())
-    except Exception as e:
-        logger.error(f'Ошибка: {e}')
-        status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.CLOSED)
+
+            watchdog_queue.put_nowait("New message in chat")
+            message = line.decode().strip()
+            gui_queue.put_nowait(message)
+            save_queue.put_nowait(message)
     finally:
+        status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.CLOSED)
         if writer:
             writer.close()
             await writer.wait_closed()
-            logger.info(f"Соединение с портом {port} закрыто.")
 
 
 async def generate_msg(queue):
@@ -258,6 +203,8 @@ async  def main():
 
         tg.start_soon(run_reconnect_loop, args, messages_queue, sending_queue,
                       status_updates_queue, watchdog_queue, save_history_queue)
+
+        tg.start_soon(save_messages, args.history, save_history_queue)
 
 
 
