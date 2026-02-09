@@ -68,10 +68,9 @@ async def send_msgs(host, port, token, sending_queue, status_updates_queue, watc
     writer = None
 
     try:
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(host, port),
-            timeout=5.0
-        )
+        async with timeout(5.0):
+            reader, writer = await asyncio.open_connection(host, port)
+
         status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
 
 
@@ -111,7 +110,7 @@ async def send_msgs(host, port, token, sending_queue, status_updates_queue, watc
                 watchdog_logger.debug("Application-level PING sent")
     except (ConnectionError, asyncio.TimeoutError, socket.gaierror, OSError) as e:
         logger.error(f'Потеряно соединение с сервером: {e}')
-        pass
+        raise
     finally:
         status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.CLOSED)
         if writer:
@@ -149,7 +148,6 @@ async def read_msgs(host, port, gui_queue,save_queue, status_updates_queue, watc
         status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
 
         while True:
-            # Здесь тоже используем timeout вместо wait_for
             async with timeout(10.0):
                 line = await reader.readline()
 
@@ -188,14 +186,18 @@ async  def main():
 
     status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
 
-    async with anyio.create_task_group() as tg:
-        tg.start_soon(gui.draw, messages_queue, sending_queue, status_updates_queue)
+    try:
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(gui.draw, messages_queue, sending_queue, status_updates_queue)
 
-        tg.start_soon(run_reconnect_loop, args, messages_queue, sending_queue,
-                      status_updates_queue, watchdog_queue, save_history_queue)
+            tg.start_soon(run_reconnect_loop, args, messages_queue, sending_queue,
+                          status_updates_queue, watchdog_queue, save_history_queue)
 
-        tg.start_soon(save_messages, args.history, save_history_queue)
-
+            tg.start_soon(save_messages, args.history, save_history_queue)
+    except (gui.TkAppClosed, KeyboardInterrupt, ExceptionGroup, asyncio.exceptions.CancelledError):
+        logger.info("Приложение завершено пользователем.")
+    except Exception as e:
+        logger.exception(f"Программа завершилась с критической ошибкой: {e}")
 
 
 if __name__ == '__main__':
