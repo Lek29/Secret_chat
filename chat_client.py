@@ -1,23 +1,21 @@
-import os
-
-import anyio
+import asyncio
 import datetime
 import json
 import logging
+import os
 import socket
 
 import aiofiles
-import gui
-import asyncio
-
+import anyio
 from async_timeout import timeout
-
-from gui_from_registration import run_registration_process
-from send_minechat import parse_args
 from dotenv import load_dotenv
 
+import gui
+from gui_from_registration import run_registration_process
+from send_minechat import parse_args
+
 logger = logging.getLogger(__name__)
-watchdog_logger =logging.getLogger('watchdog')
+watchdog_logger = logging.getLogger('watchdog')
 
 
 async def get_valid_token(args):
@@ -37,7 +35,10 @@ async def get_valid_token(args):
     return token
 
 
-async def run_reconnect_loop(args, messages_queue, sending_queue, status_updates_queue, watchdog_queue, save_history_queue):
+async def run_reconnect_loop(args, messages_queue,
+                             sending_queue, status_updates_queue,
+                             watchdog_queue, save_history_queue
+                             ):
     while True:
         try:
             await handle_connection(
@@ -46,7 +47,7 @@ async def run_reconnect_loop(args, messages_queue, sending_queue, status_updates
                 watchdog_queue, save_history_queue
             )
         except (ConnectionError, ExceptionGroup, socket.gaierror):
-            logger.info("Потеря соединения. Повторная попытка через 2 сек...")
+            logger.info('Потеря соединения. Повторная попытка через 2 сек...')
             await asyncio.sleep(2)
 
 
@@ -75,7 +76,7 @@ async def watch_for_connection(watchdog_queue):
             if cm.expired:
                 timestamp = int(datetime.datetime.now().timestamp())
                 watchdog_logger.info(f'[{timestamp}] {int(check_timeout)}s timeout is elapsed')
-                raise ConnectionError("Watchdog detected connection timeout")
+                raise ConnectionError('Watchdog detected connection timeout')
 
 
 class InvalidToken(Exception):
@@ -92,7 +93,6 @@ async def send_msgs(host, port, token, sending_queue, status_updates_queue, watc
 
         status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
 
-
         await reader.readline()
         writer.write(f'{token}\n'.encode())
         await writer.drain()
@@ -101,12 +101,12 @@ async def send_msgs(host, port, token, sending_queue, status_updates_queue, watc
         account_info = json.loads(auth_answer.decode())
 
         if not account_info:
-            raise InvalidToken("Передан неверный токен. Проверьте настройки.")
+            raise InvalidToken('Передан неверный токен. Проверьте настройки.')
 
-        watchdog_queue.put_nowait("Authorization done")
+        watchdog_queue.put_nowait('Authorization done')
 
         nickname = account_info['nickname']
-        logger.info(f"Выполнена авторизация. Пользователь {nickname}.")
+        logger.info(f'Выполнена авторизация. Пользователь {nickname}.')
 
         status_updates_queue.put_nowait(gui.NicknameReceived(nickname))
 
@@ -116,16 +116,16 @@ async def send_msgs(host, port, token, sending_queue, status_updates_queue, watc
                     message = await sending_queue.get()
 
                     clean_message = message.replace('\n', ' ')
-                    writer.write(f"{clean_message}\n\n".encode())
+                    writer.write(f'{clean_message}\n\n'.encode())
                     await writer.drain()
 
-                    watchdog_queue.put_nowait("Message sent")
+                    watchdog_queue.put_nowait('Message sent')
 
                     logger.info(f"Сообщение '{clean_message}' улетело на сервер!")
             except asyncio.TimeoutError:
                 writer.write(b'\n')
                 await writer.drain()
-                watchdog_logger.debug("Application-level PING sent")
+                watchdog_logger.debug('Application-level PING sent')
     except (ConnectionError, asyncio.TimeoutError, socket.gaierror, OSError) as e:
         logger.error(f'Потеряно соединение с сервером: {e}')
         raise
@@ -155,9 +155,9 @@ async def load_history(filepath, messages_queue):
         ...
 
 
-async def read_msgs(host, port, gui_queue,save_queue, status_updates_queue, watchdog_queue):
+async def read_msgs(host, port, gui_queue, save_queue, status_updates_queue, watchdog_queue):
     status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.INITIATED)
-    watchdog_queue.put_nowait("Prompt before auth")
+    watchdog_queue.put_nowait('Prompt before auth')
 
     async with timeout(5.0):
         reader, writer = await asyncio.open_connection(host, port)
@@ -172,7 +172,7 @@ async def read_msgs(host, port, gui_queue,save_queue, status_updates_queue, watc
             if not line:
                 break
 
-            watchdog_queue.put_nowait("New message in chat")
+            watchdog_queue.put_nowait('New message in chat')
             message = line.decode().strip()
             gui_queue.put_nowait(message)
             save_queue.put_nowait(message)
@@ -183,7 +183,7 @@ async def read_msgs(host, port, gui_queue,save_queue, status_updates_queue, watc
             await writer.wait_closed()
 
 
-async  def main():
+async def main():
     load_dotenv()
 
     logging.basicConfig(
@@ -209,7 +209,7 @@ async  def main():
     args.token = await get_valid_token(args)
 
     if not args.token:
-        logger.error("Не удалось получить токен. Завершение работы.")
+        logger.error('Не удалось получить токен. Завершение работы.')
         return
 
     try:
@@ -221,9 +221,9 @@ async  def main():
 
             tg.start_soon(save_messages, args.history, save_history_queue)
     except (gui.TkAppClosed, KeyboardInterrupt, ExceptionGroup, asyncio.exceptions.CancelledError):
-        logger.info("Приложение завершено пользователем.")
+        logger.info('Приложение завершено пользователем.')
     except Exception as e:
-        logger.exception(f"Программа завершилась с критической ошибкой: {e}")
+        logger.exception(f'Программа завершилась с критической ошибкой: {e}')
 
 
 if __name__ == '__main__':

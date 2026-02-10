@@ -1,7 +1,7 @@
+import asyncio
+import json
 import tkinter as tk
 from tkinter import messagebox
-import asyncio
-import  json
 
 import aiofiles
 
@@ -16,7 +16,7 @@ async def register_at_server(host, port, nickname):
 
         await reader.readline()
 
-        writer.write(f"{nickname}\n".encode())
+        writer.write(f'{nickname}\n'.encode())
         await writer.drain()
 
         response = await reader.readline()
