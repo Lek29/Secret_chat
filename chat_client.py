@@ -1,21 +1,40 @@
+import os
+
 import anyio
 import datetime
 import json
 import logging
 import socket
-from tkinter import messagebox
 
 import aiofiles
 import gui
 import asyncio
 
 from async_timeout import timeout
-from time import time
+
+from gui_from_registration import run_registration_process
 from send_minechat import parse_args
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 watchdog_logger =logging.getLogger('watchdog')
+
+
+async def get_valid_token(args):
+    if args.token:
+        return args.token
+
+    load_dotenv()
+    token = os.getenv('ACCOUNT_HASH')
+
+    if not token:
+        logger.info('Токен не найден. Запускаю регистрацию')
+        await run_registration_process()
+
+        load_dotenv(override=True)
+        token = os.getenv('ACCOUNT_HASH')
+
+    return token
 
 
 async def run_reconnect_loop(args, messages_queue, sending_queue, status_updates_queue, watchdog_queue, save_history_queue):
@@ -82,7 +101,6 @@ async def send_msgs(host, port, token, sending_queue, status_updates_queue, watc
         account_info = json.loads(auth_answer.decode())
 
         if not account_info:
-            messagebox.showerror("Ошибка авторизации", "Неверный токен. Проверьте настройки.")
             raise InvalidToken("Передан неверный токен. Проверьте настройки.")
 
         watchdog_queue.put_nowait("Authorization done")
@@ -185,6 +203,14 @@ async  def main():
     await load_history(args.history, messages_queue)
 
     status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
+
+    args = parse_args()
+
+    args.token = await get_valid_token(args)
+
+    if not args.token:
+        logger.error("Не удалось получить токен. Завершение работы.")
+        return
 
     try:
         async with anyio.create_task_group() as tg:
